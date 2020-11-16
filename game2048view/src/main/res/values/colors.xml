@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="color_grid_bg">#FFB9ADA1</color>
+    <color name="color_cell">#FFCAC0B4</color>
+
+    <color name="color_tile_2">#FFECE4DB</color>
+    <color name="color_tile_4">#FFEBE0CA</color>
+    <color name="color_tile_8">#FFE9B381</color>
+    <color name="color_tile_16">#FFE69B70</color>
+    <color name="color_tile_32">#FFE78267</color>
+    <color name="color_tile_64">#FFE56847</color>
+    <color name="color_tile_128">#FFE9CF7F</color>
+    <color name="color_tile_256">#FFE8CC72</color>
+    <color name="color_tile_512">#FFE8C865</color>
+    <color name="color_tile_1024">#FFE7C559</color>
+    <color name="color_tile_2048">#FFE7C24F</color>
+    <color name="color_tile_4096">#FF000000</color>
+
+    <color name="color_text1">#766E66</color>
+    <color name="color_text2">#FFFFFF</color>
+</resources>

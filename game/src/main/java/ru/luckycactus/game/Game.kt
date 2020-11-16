@@ -1,19 +1,19 @@
-package ru.luckycactus.game2048.model
+package ru.luckycactus.game
 
-import android.graphics.Point
 import kotlin.random.Random
 
 class Game(
-    private val rows: Int,
-    private val columns: Int
+    val rows: Int,
+    val columns: Int
 ) {
-    val grid = Array(rows) { Array<Tile?>(columns) { null } }
+    val grid = Array(rows) { Array<Cell?>(columns) { null } }
 
     private var started = false
     private var slidableDirections = 0
     private val traverseLinesDeltas: Map<Int, Pair<Int, Int>>
     private val traverseLinesXRanges: Map<Int, IntRange>
     private val traverseLinesYRanges: Map<Int, IntRange>
+    private val freeSpots = mutableListOf<Point>()
 
     init {
         traverseLinesDeltas = mapOf(
@@ -57,30 +57,52 @@ class Game(
 
     fun isDirectionSlidable(direction: Int) = (slidableDirections and direction) != 0
 
+    inline fun traverseGrid(body: (row: Int, column: Int, cell: Cell?) -> Unit) {
+        grid.forEachIndexed { row, tilesRow ->
+            tilesRow.forEachIndexed { column, tile ->
+                body(row, column, tile)
+            }
+        }
+    }
+
+    fun reset() {
+        traverseGrid { row, column, _ ->
+            grid[row][column] = null
+        }
+        started = false
+        freeSpots.clear()
+        slidableDirections = 0
+    }
+
+    fun restart() {
+        reset()
+        start()
+    }
+
     private fun slideLine(startRow: Int, startColumn: Int, dx: Int, dy: Int) {
-        var emptyRow = -1
-        var emptyColumn = -1
-        var mergeCandidate: Tile? = null
+        var emptyCellRow = -1
+        var emptyCellColumn = -1
+        var mergeCandidate: Cell? = null
         traverseLine(startRow, startColumn, dx, dy) { row, column, tile ->
             if (tile == null) {
-                if (emptyRow < 0) {
-                    emptyRow = row
-                    emptyColumn = column
+                if (emptyCellRow < 0) {
+                    emptyCellRow = row
+                    emptyCellColumn = column
                 }
             } else {
-                tile.clearPrevious()
+                tile.savePosition()
                 if (mergeCandidate?.value == tile.value) {
-                    mergeTiles(mergeCandidate!!, tile)
+                    mergeCells(mergeCandidate!!, tile)
                     mergeCandidate = null
-                    if (emptyRow < 0) {
-                        emptyRow = row
-                        emptyColumn = column
+                    if (emptyCellRow < 0) {
+                        emptyCellRow = row
+                        emptyCellColumn = column
                     }
                 } else {
-                    if (emptyRow >= 0) {
-                        moveTile(tile, emptyRow, emptyColumn)
-                        emptyRow += -dy
-                        emptyColumn += -dx
+                    if (emptyCellRow >= 0) {
+                        moveCell(tile, emptyCellRow, emptyCellColumn)
+                        emptyCellRow += -dy
+                        emptyCellColumn += -dx
                     }
                     mergeCandidate = tile
                 }
@@ -88,29 +110,32 @@ class Game(
         }
     }
 
-    private fun moveTile(tile: Tile, newRow: Int, newColumn: Int) {
-        tile.move(newRow, newColumn)
-        grid[tile.previousRow][tile.previousColumn] = null
-        grid[tile.row][tile.column] = tile
+    private fun moveCell(cell: Cell, newRow: Int, newColumn: Int) {
+        cell.move(newRow, newColumn)
+        grid[cell.previousRow][cell.previousColumn] = null
+        grid[cell.row][cell.column] = cell
     }
 
-    private fun mergeTiles(tile1: Tile, tile2: Tile) {
-        tile1.merge(tile2)
-        grid[tile2.row][tile2.column] = null
+    private fun mergeCells(cell1: Cell, cell2: Cell) {
+        val merged = Cell(cell1.row, cell1.column, cell1.value * 2).apply {
+            setMergedFrom(cell1, cell2)
+        }
+        grid[cell1.row][cell1.column] = merged
+        grid[cell2.row][cell2.column] = null
     }
 
     private fun spawn(count: Int = 1) {
-        val freeCells = getFreeCells()
-        if (count > freeCells.size)
-            throw IllegalArgumentException("Can't spawn $count items when only ${freeCells.size} cells are available")
+        findFreeSpots()
+        if (count > freeSpots.size)
+            throw IllegalArgumentException("Can't spawn $count items when only ${freeSpots.size} cells are available")
 
         for (i in 0 until count) {
-            val cellIndex = Random.Default.nextInt(freeCells.size)
-            val cell = freeCells[cellIndex]
+            val spotIndex = Random.Default.nextInt(freeSpots.size)
+            val spot = freeSpots[spotIndex]
             val value = generateTileValue()
-            grid[cell.y][cell.x] = Tile(cell.y, cell.x, value)
+            grid[spot.y][spot.x] = Cell(spot.y, spot.x, value)
             if (i < count - 1)
-                freeCells.removeAt(cellIndex)
+                freeSpots.removeAt(spotIndex)
         }
     }
 
@@ -154,16 +179,13 @@ class Game(
         return false
     }
 
-    private fun getFreeCells(): MutableList<Point> {
-        val free = mutableListOf<Point>()
-        grid.forEachIndexed { y, row ->
-            row.forEachIndexed { x, tile ->
-                if (tile == null) {
-                    free.add(Point(x, y))
-                }
+    private fun findFreeSpots() {
+        freeSpots.clear()
+        traverseGrid { row, column, cell ->
+            if (cell == null) {
+                freeSpots.add(Point(column, row))
             }
         }
-        return free
     }
 
     private inline fun traverseLines(
@@ -186,7 +208,7 @@ class Game(
         startColumn: Int,
         dx: Int,
         dy: Int,
-        body: (row: Int, column: Int, tile: Tile?) -> Unit
+        body: (row: Int, column: Int, cell: Cell?) -> Unit
     ) {
         var row = startRow
         var column = startColumn

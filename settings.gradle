@@ -1,2 +1,4 @@
+include ':game2048view'
+include ':game'
 include ':app'
 rootProject.name = "game2048"

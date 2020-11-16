@@ -1,11 +1,12 @@
 package ru.luckycactus.game2048
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
 import android.view.View
-import android.widget.Button
-import android.widget.TextView
-import ru.luckycactus.game2048.model.Game
+import androidx.appcompat.app.AppCompatActivity
+import kotlinx.android.synthetic.main.activity_main.*
+import ru.luckycactus.game.Game
+import ru.luckycactus.game2048view.GameView
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,32 +16,38 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val clickListener = { view: View ->
-            val direction = when (view.id) {
-                R.id.btnLeft -> Game.LEFT
-                R.id.btnTop -> Game.TOP
-                R.id.btnRight -> Game.RIGHT
-                R.id.btnBottom -> Game.BOTTOM
-                else -> throw Exception()
+        root.setOnTouchListener(object : OnSwipeTouchListener(this@MainActivity) {
+            override fun onSwipeRight() {
+                slide(Game.RIGHT)
             }
-            game.slide(direction)
-            render()
+
+            override fun onSwipeLeft() {
+                slide(Game.LEFT)
+            }
+
+            override fun onSwipeTop() {
+                slide(Game.TOP)
+            }
+
+            override fun onSwipeBottom() {
+                slide(Game.BOTTOM)
+            }
+        })
+
+        btnRestart.setOnClickListener {
+            game.restart()
+            gameView.update()
         }
 
-        findViewById<Button>(R.id.btnLeft).setOnClickListener(clickListener)
-        findViewById<Button>(R.id.btnTop).setOnClickListener(clickListener)
-        findViewById<Button>(R.id.btnRight).setOnClickListener(clickListener)
-        findViewById<Button>(R.id.btnBottom).setOnClickListener(clickListener)
-
+        gameView.game = game
         game.start()
-        render()
+        gameView.update()
     }
 
-    private fun render() {
-        val sb = StringBuilder()
-        game.grid.forEach { row ->
-            row.joinTo(sb, " ", postfix = "\n", transform = { "%3d".format(it?.value ?: 0) })
+    private fun slide(direction: Int) {
+        if (game.isDirectionSlidable(direction)) {
+            game.slide(direction)
+            gameView.update()
         }
-        findViewById<TextView>(R.id.tvGame).text = sb.toString()
     }
 }
